@@ -1,15 +1,15 @@
 package com.frostmaster.randomhobbie.configuration;
 
 import com.frostmaster.randomhobbie.domain.Hobby;
+import com.frostmaster.randomhobbie.repository.HobbyRepository;
+import com.frostmaster.randomhobbie.writer.HobbyWriter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
 import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;
 import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
 import org.springframework.batch.core.launch.support.RunIdIncrementer;
-import org.springframework.batch.item.ItemProcessor;
-import org.springframework.batch.item.database.BeanPropertyItemSqlParameterSourceProvider;
-import org.springframework.batch.item.database.JdbcBatchItemWriter;
+import org.springframework.batch.item.ItemWriter;
 import org.springframework.batch.item.file.FlatFileItemReader;
 import org.springframework.batch.item.file.LineMapper;
 import org.springframework.batch.item.file.mapping.BeanWrapperFieldSetMapper;
@@ -17,16 +17,16 @@ import org.springframework.batch.item.file.mapping.DefaultLineMapper;
 import org.springframework.batch.item.file.transform.DelimitedLineTokenizer;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.Resource;
-import org.springframework.jdbc.datasource.embedded.EmbeddedDatabase;
-import org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseBuilder;
-import org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseType;
 
+@Configuration
 @RequiredArgsConstructor
 public class BatchConfig {
 
   private final JobBuilderFactory jobBuilderFactory;
   private final StepBuilderFactory stepBuilderFactory;
+  private final HobbyRepository hobbyRepository;
 
   @Value("classPath:/input/hobbies.csv")
   private Resource inputResource;
@@ -46,14 +46,8 @@ public class BatchConfig {
         .get("step")
         .<Hobby, Hobby>chunk(5)
         .reader(reader())
-        .processor(processor())
         .writer(writer())
         .build();
-  }
-
-  @Bean
-  public ItemProcessor<Hobby, Hobby> processor() {
-    return new DBLogProcessor();
   }
 
   @Bean
@@ -69,8 +63,8 @@ public class BatchConfig {
   public LineMapper<Hobby> lineMapper() {
     DefaultLineMapper<Hobby> lineMapper = new DefaultLineMapper<Hobby>();
     DelimitedLineTokenizer lineTokenizer = new DelimitedLineTokenizer();
-    lineTokenizer.setNames(new String[] { "id", "firstName", "lastName" });
-    lineTokenizer.setIncludedFields(new int[] { 0, 1, 2 });
+    lineTokenizer.setNames(new String[] { "name"});
+    lineTokenizer.setIncludedFields(new int[] { 0 });
     BeanWrapperFieldSetMapper<Hobby> fieldSetMapper = new BeanWrapperFieldSetMapper<Hobby>();
     fieldSetMapper.setTargetType(Hobby.class);
     lineMapper.setLineTokenizer(lineTokenizer);
@@ -79,22 +73,8 @@ public class BatchConfig {
   }
 
   @Bean
-  public JdbcBatchItemWriter<Hobby> writer() {
-    JdbcBatchItemWriter<Hobby> itemWriter = new JdbcBatchItemWriter<Hobby>();
-    itemWriter.setDataSource(dataSource());
-    itemWriter.setSql("INSERT INTO EMPLOYEE (ID, FIRSTNAME, LASTNAME) VALUES (:id, :firstName, :lastName)");
-    itemWriter.setItemSqlParameterSourceProvider(new BeanPropertyItemSqlParameterSourceProvider<Hobby>());
-    return itemWriter;
-  }
-
-  @Bean
-  public EmbeddedDatabase dataSource(){
-    EmbeddedDatabaseBuilder embeddedDatabaseBuilder = new EmbeddedDatabaseBuilder();
-    return embeddedDatabaseBuilder.addScript("classpath:org/springframework/batch/core/schema-drop-h2.sql")
-        .addScript("classpath:org/springframework/batch/core/schema-h2.sql")
-        .addScript("classpath:employee.sql")
-        .setType(EmbeddedDatabaseType.H2)
-        .build();
+  ItemWriter<Hobby> writer() {
+    return new HobbyWriter(hobbyRepository);
   }
 
 }
