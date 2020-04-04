@@ -1,6 +1,7 @@
 package com.frostmaster.randomhobbie.resource;
 
 import com.frostmaster.randomhobbie.domain.Hobby;
+import com.frostmaster.randomhobbie.dto.HobbyDto;
 import com.frostmaster.randomhobbie.service.HobbyService;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -9,7 +10,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/hobby/")
+@RequestMapping("/hobby")
 @RequiredArgsConstructor
 public class HobbyController {
 
@@ -20,8 +21,8 @@ public class HobbyController {
     return hobbyService.getAllHobbies();
   }
 
-  @GetMapping
-  public Hobby getRandomHobby() {
+  @GetMapping("/random")
+  public HobbyDto getRandomHobby() {
     return hobbyService.getRandomHobby();
   }
 
